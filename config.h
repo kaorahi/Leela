@@ -23,7 +23,9 @@
 //#define USE_OPENBLAS
 //#define USE_MKL
 //#define USE_CAFFE
+#ifndef USE_BLAS
 #define USE_OPENCL
+#endif
 //#define USE_TUNER
 #define USE_SEARCH
 
