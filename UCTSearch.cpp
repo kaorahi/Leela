@@ -293,7 +293,9 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
     }
 
     std::string tmp = state.move_to_text(bestnode->get_move());
-    myprintf("====================================\n"
+    // This line confuses Lizzie.
+    // myprintf("====================================\n"
+    myprintf("\n"
              "%d visits, score %5.2f%% (from %5.2f%%) PV: ",
              bestnode->get_visits(),
              bestnode->get_visits() > 0 ? bestnode->get_mixed_score(color)*100.0f : 0.0f,
