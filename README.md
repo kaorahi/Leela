@@ -47,4 +47,4 @@ I want to thank everyone who contributed to the development of Leela: other auth
 License
 =======
 
-The code is licensed under the MIT license.
+See LICENSE file.
