@@ -60,6 +60,55 @@ int cfg_random_loops;
 std::string cfg_logfile;
 FILE* cfg_logfile_handle;
 bool cfg_quiet;
+AnalyzeTags cfg_analyze_tags;
+
+// imported from Leela Zero 0.17
+/* Parses tags for the lz-analyze GTP command and friends */
+AnalyzeTags::AnalyzeTags(std::istringstream& cmdstream, const GameState& game) {
+    std::string tag;
+
+    /* Default color is the current one */
+    m_who = game.board.get_to_move();
+
+    while (true) {
+        cmdstream >> std::ws;
+        if (isdigit(cmdstream.peek())) {
+            tag = "interval";
+        } else {
+            cmdstream >> tag;
+            if (cmdstream.fail() && cmdstream.eof()) {
+                /* Parsing complete */
+                m_invalid = false;
+                return;
+            }
+        }
+
+        if (tag == "w" || tag == "white") {
+            m_who = FastBoard::WHITE;
+        } else if (tag == "b" || tag == "black") {
+            m_who = FastBoard::BLACK;
+        } else if (tag == "interval") {
+            cmdstream >> m_interval_centis;
+            if (cmdstream.fail()) {
+                return;
+            }
+        } else {
+            return;
+        }
+    }
+}
+
+int AnalyzeTags::interval_centis() const {
+    return m_interval_centis;
+}
+
+int AnalyzeTags::invalid() const {
+    return m_invalid;
+}
+
+int AnalyzeTags::who() const {
+    return m_who;
+}
 
 void GTP::setup_default_parameters() {
     cfg_allow_pondering = true;
@@ -100,6 +149,8 @@ void GTP::setup_default_parameters() {
     cfg_random_loops = 4;
     cfg_logfile_handle = nullptr;
     cfg_quiet = false;
+
+    cfg_analyze_tags = AnalyzeTags{};
 }
 
 bool GTP::perform_self_test(GameState & state) {
@@ -156,6 +207,7 @@ const std::string GTP::s_commands[] = {
     "mc_winrate",
     "vn_winrate",
     "winrate",
+    "lz-analyze",
     "heatmap",
     ""
 };
@@ -401,6 +453,31 @@ bool GTP::execute(GameState & game, std::string xinput) {
         } else {
             gtp_fail_printf(id, "syntax not understood");
         }
+        return true;
+    } else if (command.find("lz-analyze") == 0) {
+        // imported from Leela Zero 0.17
+        std::istringstream cmdstream(command);
+        std::string tmp;
+
+        cmdstream >> tmp; // eat lz-analyze
+        AnalyzeTags tags{cmdstream, game};
+        if (tags.invalid()) {
+            gtp_fail_printf(id, "cannot parse analyze tags");
+            return true;
+        }
+        // Start multi-line response
+        if (id != -1) gtp_printf_raw("=%d\n", id);
+        else gtp_printf_raw("=\n");
+        // now start pondering
+        if (game.get_last_move() != FastBoard::RESIGN) {
+            cfg_analyze_tags = tags;
+            game.set_to_move(tags.who());
+            std::unique_ptr<UCTSearch> search(new UCTSearch(game));
+            search->ponder();
+        }
+        cfg_analyze_tags = {};
+        // Terminate multi-line response
+        gtp_printf_raw("\n");
         return true;
     } else if (command.find("kgs-genmove_cleanup") == 0) {
         std::istringstream cmdstream(command);

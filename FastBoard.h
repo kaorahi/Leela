@@ -115,7 +115,7 @@ public:
     int get_empty();
     int get_empty_vertex(int idx);
     bool black_to_move();
-    int get_to_move();
+    int get_to_move() const;
     void set_to_move(int color);
 
     std::string move_to_text(int move);

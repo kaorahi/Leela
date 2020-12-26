@@ -53,6 +53,7 @@ private:
     bool allow_early_exit();
     bool allow_easy_move();
     bool easy_move_precondition();
+    void output_analysis(GameState & state, UCTNode & parent);
 
     GameState & m_rootstate;
     UCTNode m_root;

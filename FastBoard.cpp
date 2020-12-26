@@ -1116,7 +1116,7 @@ bool FastBoard::black_to_move() {
     return m_tomove == BLACK;
 }
 
-int FastBoard::get_to_move() {
+int FastBoard::get_to_move() const {
     return m_tomove;
 }
 

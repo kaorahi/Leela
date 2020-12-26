@@ -307,6 +307,47 @@ void UCTSearch::dump_stats(KoState & state, UCTNode & parent) {
 #endif
 }
 
+// imported from Leela Zero 0.17
+void UCTSearch::output_analysis(GameState & state, UCTNode & parent) {
+    if (!parent.has_children()) {
+        return;
+    }
+
+    const int color = state.get_to_move();
+
+    // sort children, put best move on top
+    m_root.sort_root_children(color);
+
+    UCTNode * bestnode = parent.get_first_child();
+
+    if (bestnode->first_visit()) {
+        return;
+    }
+
+    int movecount = 0;
+    UCTNode * node = bestnode;
+    std::string separator = "info";
+
+    if (!node->get_visits()) return;
+    while (node != nullptr) {
+        if (++movecount > 2 && node->get_visits() < cfg_expand_threshold) break;
+
+        std::string move = state.move_to_text(node->get_move());
+        float winrate = m_use_nets ? node->get_mixed_score(color) : node->get_winrate(color);
+        GameState tmpstate = state;
+        tmpstate.play_move(node->get_move());
+        std::string pv = move + " " + get_pv(tmpstate, *node);
+        // trim last space in pv
+        while (!pv.empty() && pv.back() == ' ')
+            pv.erase(pv.end() - 1);
+        gtp_printf_raw("%s %s %s %s %d %s %d %s %d %s %s", separator.c_str(), "move", move.c_str(), "visits", node->get_visits(),
+                       "winrate", (int)(winrate*10000), "order", movecount - 1, "pv", pv.c_str());
+        separator = " info";
+        node = node->get_sibling();
+    }
+    gtp_printf_raw("\n");
+}
+
 bool UCTSearch::easy_move_precondition() {
    if (!m_use_nets) {
         return false;
@@ -972,6 +1013,8 @@ void UCTSearch::ponder() {
 #ifdef USE_SEARCH
     m_run = true;
     m_playouts = 0;
+    Time start;
+    auto last_output = 0;
     int cpus = cfg_num_threads;
     ThreadGroup tg(thread_pool);
     for (int i = 1; i < cpus; i++) {
@@ -981,6 +1024,15 @@ void UCTSearch::ponder() {
         KoState currstate = m_rootstate;
         play_simulation(currstate, &m_root);
         increment_playouts();
+        // imported from Leela Zero 0.17
+        if (cfg_analyze_tags.interval_centis()) {
+            Time elapsed;
+            int elapsed_centis = Time::timediff(start, elapsed);
+            if (elapsed_centis - last_output > cfg_analyze_tags.interval_centis()) {
+                last_output = elapsed_centis;
+                output_analysis(m_rootstate, m_root);
+            }
+        }
     } while(!Utils::input_pending() && (!m_hasrunflag || (*m_runflag)));
 
     // stop the search

@@ -5,6 +5,23 @@
 #include <vector>
 #include "GameState.h"
 
+class AnalyzeTags {
+    friend class LeelaTest;
+
+public:
+    AnalyzeTags() = default;
+    AnalyzeTags(std::istringstream& cmdstream, const GameState& game);
+
+    int interval_centis() const;
+    int invalid() const;
+    int who() const;
+
+private:
+    bool m_invalid{true};
+    int m_interval_centis{0};
+    int m_who{FastBoard::INVAL};
+};
+
 extern bool cfg_allow_pondering;
 extern bool cfg_allow_book;
 extern int cfg_num_threads;
@@ -38,6 +55,7 @@ extern int cfg_random_loops;
 extern std::string cfg_logfile;
 extern FILE* cfg_logfile_handle;
 extern bool cfg_quiet;
+extern AnalyzeTags cfg_analyze_tags;
 
 class GTP {
 public:
