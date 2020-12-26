@@ -884,6 +884,7 @@ int UCTSearch::think(int color, passflag_t passflag) {
     bool easy_move_tested = !easy_move_precondition();
     bool keeprunning = true;
     int last_update = 0;
+    auto last_output = 0;
     do {
         KoState currstate = m_rootstate;
 
@@ -892,6 +893,13 @@ int UCTSearch::think(int color, passflag_t passflag) {
 
         Time elapsed;
         int centiseconds_elapsed = Time::timediff(start, elapsed);
+
+        // imported from Leela Zero 0.17
+        if (cfg_analyze_tags.interval_centis() &&
+            centiseconds_elapsed - last_output > cfg_analyze_tags.interval_centis()) {
+            last_output = centiseconds_elapsed;
+            output_analysis(m_rootstate, m_root);
+        }
 
         // output some stats every second
         // check if we should still search

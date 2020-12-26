@@ -208,6 +208,7 @@ const std::string GTP::s_commands[] = {
     "vn_winrate",
     "winrate",
     "lz-analyze",
+    "lz-genmove_analyze",
     "heatmap",
     ""
 };
@@ -404,15 +405,28 @@ bool GTP::execute(GameState & game, std::string xinput) {
             }
         }
         return true;
-    } else if (command.find("genmove") == 0) {
+    } else if (command.find("genmove") == 0
+               || command.find("lz-genmove_analyze") == 0) {
+        // imported from Leela Zero 0.17
+        auto analysis_output = command.find("lz-genmove_analyze") == 0;
+
         std::istringstream cmdstream(command);
         std::string tmp;
-
         cmdstream >> tmp;  // eat genmove
-        cmdstream >> tmp;
 
-        if (!cmdstream.fail()) {
-            int who;
+        int who;
+        AnalyzeTags tags;
+
+        if (analysis_output) {
+            tags = AnalyzeTags{cmdstream, game};
+            if (tags.invalid()) {
+                gtp_fail_printf(id, "cannot parse analyze tags");
+                return true;
+            }
+            who = tags.who();
+        } else {
+            /* genmove command */
+            cmdstream >> tmp;
             if (tmp == "w" || tmp == "white") {
                 who = FastBoard::WHITE;
             } else if (tmp == "b" || tmp == "black") {
@@ -421,6 +435,9 @@ bool GTP::execute(GameState & game, std::string xinput) {
                 gtp_fail_printf(id, "syntax error");
                 return 1;
             }
+        }
+
+        if (true) {
             float old_komi = game.get_komi();
             float new_komi = old_komi;
             if (cfg_komi_adjust) {
